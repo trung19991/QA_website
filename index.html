@@ -7,118 +7,127 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
             margin: 0;
             padding: 0;
             display: flex;
-        }
-        .sidebar {
-            width: 250px;
-            background-color: #1f1f1f;
+            justify-content: center;
+            align-items: center;
             height: 100vh;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-        }
-        .sidebar h2 {
-            color: #4CAF50;
+            background-color: #f0f0f0;
         }
         .container {
-            flex-grow: 1;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .content {
-            max-width: 800px;
-            width: 100%;
-            background-color: #1e1e1e;
+            background-color: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .group {
+            display: flex;
             margin-bottom: 20px;
         }
-        h1 {
-            text-align: center;
-            color: #4CAF50;
-        }
-        p {
-            font-size: 1.1em;
-            line-height: 1.6;
-        }
-        textarea, input {
-            width: 100%;
-            padding: 15px;
-            margin: 10px 0;
-            border: 1px solid #333;
+        .group input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
             border-radius: 4px;
-            font-size: 1em;
-            background-color: #2c2c2c;
-            color: #e0e0e0;
+            margin-right: 10px;
         }
-        button {
-            width: 100%;
-            padding: 15px;
-            background-color: #4CAF50;
-            color: #fff;
+        .group button {
+            padding: 10px 15px;
+            font-size: 16px;
             border: none;
+            background-color: #007BFF;
+            color: white;
             border-radius: 4px;
-            font-size: 1.2em;
             cursor: pointer;
-            transition: background-color 0.3s ease;
         }
-        button:hover {
-            background-color: #45a049;
+        .group button svg {
+            vertical-align: middle;
         }
         h2 {
+            margin-top: 0;
+        }
+        #contexts {
+            max-height: 200px;
+            overflow-y: scroll;
             margin-top: 20px;
-            color: #4CAF50;
-        }
-        #answer {
-            font-size: 1.2em;
-            background-color: #2c2c2c;
-            padding: 15px;
-            border: 1px solid #333;
+            border: 1px solid #ccc;
+            padding: 10px;
             border-radius: 4px;
+            background-color: #fafafa;
         }
-        .sidebar ul {
+        #suggestions {
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #fafafa;
             display: none;
+        }
+        #suggestions p {
+            margin: 0;
+            padding: 5px;
+            cursor: pointer;
+        }
+        #suggestions p:hover {
+            background-color: #e0e0e0;
         }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h2>Menu</h2>
-        <ul>
-            <li><a href="#" style="color: #e0e0e0; text-decoration: none;">Home</a></li>
-            <li><a href="#" style="color: #e0e0e0; text-decoration: none;">About</a></li>
-            <li><a href="#" style="color: #e0e0e0; text-decoration: none;">Contact</a></li>
-        </ul>
-    </div>
     <div class="container">
         <div class="content">
             <h1>Question Answering</h1>
-            <p>Nhập ngữ cảnh (đoạn văn bản) vào ô dưới đây. Ngữ cảnh cung cấp thông tin cần thiết để mô hình có thể trả lời câu hỏi của bạn một cách chính xác.</p>
-            <textarea id="context" rows="5" placeholder="Enter context here..."></textarea>
-            <input type="text" id="question" placeholder="Enter your question here...">
-            <button onclick="askQuestion()">Ask</button>
+            <div class="group">
+                <input type="text" id="question" placeholder="Enter your question here..." oninput="getSuggestions()">
+                <button onclick="askQuestion()">Ask</button>
+            </div>
+            <div id="suggestions"></div>
             <h2>Answer:</h2>
             <p id="answer"></p>
         </div>
     </div>
     <script>
         async function askQuestion() {
-            const context = document.getElementById('context').value;
             const question = document.getElementById('question').value;
             const response = await fetch('/predict', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ context, question })
+                body: JSON.stringify({ question })
             });
             const data = await response.json();
             document.getElementById('answer').innerText = data.answer;
+        }
+
+        async function getSuggestions() {
+            const question = document.getElementById('question').value;
+            if (question.length < 3) {
+                document.getElementById('suggestions').style.display = 'none';
+                return;
+            }
+            const response = await fetch('/similar_questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question })
+            });
+            const data = await response.json();
+            const suggestionsDiv = document.getElementById('suggestions');
+            suggestionsDiv.innerHTML = '';
+            if (data.similar_questions.length > 0) {
+                data.similar_questions.forEach((suggestion) => {
+                    const p = document.createElement('p');
+                    p.textContent = suggestion;
+                    p.onclick = () => {
+                        document.getElementById('question').value = suggestion;
+                        suggestionsDiv.style.display = 'none';
+                    };
+                    suggestionsDiv.appendChild(p);
+                });
+                suggestionsDiv.style.display = 'block';
+            } else {
+                suggestionsDiv.style.display = 'none';
+            }
         }
     </script>
 </body>
